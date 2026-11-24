@@ -439,3 +439,22 @@ export function createSeedBhandaras(referenceDate = new Date()): Bhandara[] {
     },
   ];
 }
+
+export function refreshSeedTimestamps(
+  bhandaras: Bhandara[],
+  referenceDate = new Date()
+): Bhandara[] {
+  const freshSeeds = createSeedBhandaras(referenceDate);
+  const byId = new Map(freshSeeds.map((s) => [s.id, s]));
+
+  return bhandaras.map((b) => {
+    if (!b.isSeed) return b;
+    const fresh = byId.get(b.id);
+    if (!fresh) return b;
+    return {
+      ...b,
+      startTime: fresh.startTime,
+      endTime: fresh.endTime,
+    };
+  });
+}

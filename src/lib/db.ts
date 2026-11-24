@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { createSeedBhandaras } from './seed-data';
+import { createSeedBhandaras, refreshSeedTimestamps } from './seed-data';
 import { Bhandara, BhandaraDatabase, CrowdLevel, VoteType } from './types';
 
 const TMP_DB_PATH = '/tmp/nukti-poodi-db.json';
@@ -45,7 +45,10 @@ function writeTmpDb(db: BhandaraDatabase) {
 
 export async function readDatabase(): Promise<BhandaraDatabase> {
   if (memoryCache) {
-    return memoryCache;
+    return {
+      ...memoryCache,
+      bhandaras: refreshSeedTimestamps(memoryCache.bhandaras),
+    };
   }
 
   const { token, gistId } = getGistConfig();
@@ -69,7 +72,10 @@ export async function readDatabase(): Promise<BhandaraDatabase> {
           if (Array.isArray(parsed.bhandaras) && parsed.bhandaras.length > 0) {
             memoryCache = parsed;
             writeTmpDb(parsed);
-            return parsed;
+            return {
+              ...parsed,
+              bhandaras: refreshSeedTimestamps(parsed.bhandaras),
+            };
           }
         }
       }
@@ -81,7 +87,10 @@ export async function readDatabase(): Promise<BhandaraDatabase> {
   const tmp = readTmpDb();
   if (tmp) {
     memoryCache = tmp;
-    return tmp;
+    return {
+      ...tmp,
+      bhandaras: refreshSeedTimestamps(tmp.bhandaras),
+    };
   }
 
   const initial = getInitialDb();

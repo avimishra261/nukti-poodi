@@ -46,11 +46,13 @@ const BhandaraMap = dynamic(
 );
 
 type TabKey = 'live' | 'today' | 'upcoming' | 'all';
+type SortKey = 'nearest' | 'popular' | 'newest';
 
 export default function HomePage() {
   const [bhandaras, setBhandaras] = useState<Bhandara[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>('live');
+  const [sortBy, setSortBy] = useState<SortKey>('nearest');
   const [selectedArea, setSelectedArea] = useState<string>('ALL');
   const [foodKeyword, setFoodKeyword] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -179,6 +181,15 @@ export default function HomePage() {
           : null,
       }))
       .sort((a, b) => {
+        if (sortBy === 'popular') {
+          return b.bhandara.votes.chal_raha - a.bhandara.votes.chal_raha;
+        }
+        if (sortBy === 'newest') {
+          return (
+            new Date(b.bhandara.createdAt).getTime() -
+            new Date(a.bhandara.createdAt).getTime()
+          );
+        }
         if (a.distanceKm !== null && b.distanceKm !== null) {
           return a.distanceKm - b.distanceKm;
         }
@@ -189,7 +200,7 @@ export default function HomePage() {
         if (diff !== 0) return diff;
         return b.bhandara.votes.chal_raha - a.bhandara.votes.chal_raha;
       });
-  }, [bhandaras, tab, selectedArea, foodKeyword, searchQuery, userLocation]);
+  }, [bhandaras, tab, sortBy, selectedArea, foodKeyword, searchQuery, userLocation]);
 
   return (
     <div className="min-h-screen pb-24">
@@ -396,25 +407,51 @@ export default function HomePage() {
           </select>
         </div>
 
-        {/* Quick Food Filter Chips */}
-        <div className="no-scrollbar mt-3 flex items-center gap-2 overflow-x-auto pb-1">
-          {QUICK_FOOD_FILTERS.map((f) => {
-            const active = foodKeyword === f.keyword;
-            return (
+        {/* Quick Food Filter Chips + Sort */}
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="no-scrollbar flex items-center gap-2 overflow-x-auto pb-1">
+            {QUICK_FOOD_FILTERS.map((f) => {
+              const active = foodKeyword === f.keyword;
+              return (
+                <button
+                  key={f.label}
+                  type="button"
+                  onClick={() => setFoodKeyword(f.keyword)}
+                  className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-extrabold transition ${
+                    active
+                      ? 'bg-orange-600 text-white shadow-sm'
+                      : 'border border-orange-200 bg-white text-orange-900 hover:bg-orange-50'
+                  }`}
+                >
+                  {f.emoji} {f.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1.5 text-xs">
+            <span className="font-bold text-orange-900/70">Sort:</span>
+            {(
+              [
+                { k: 'nearest', label: '📍 Paas / Live' },
+                { k: 'popular', label: '🔥 Popular' },
+                { k: 'newest', label: '🆕 Naye' },
+              ] as { k: SortKey; label: string }[]
+            ).map((s) => (
               <button
-                key={f.label}
+                key={s.k}
                 type="button"
-                onClick={() => setFoodKeyword(f.keyword)}
-                className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-extrabold transition ${
-                  active
-                    ? 'bg-orange-600 text-white shadow-sm'
-                    : 'border border-orange-200 bg-white text-orange-900 hover:bg-orange-50'
+                onClick={() => setSortBy(s.k)}
+                className={`rounded-full px-2.5 py-1 font-bold transition ${
+                  sortBy === s.k
+                    ? 'bg-[#431407] text-white'
+                    : 'border border-orange-200 bg-white text-[#431407] hover:bg-orange-50'
                 }`}
               >
-                {f.emoji} {f.label}
+                {s.label}
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
 
         {/* Results */}
@@ -479,6 +516,30 @@ export default function HomePage() {
           )}
         </div>
       </main>
+
+      {/* Indore Seva & Zero Food Waste Banner */}
+      <section className="mx-auto mt-10 max-w-6xl px-3 sm:px-6">
+        <div className="rounded-3xl border border-orange-200 bg-gradient-to-r from-amber-50 to-orange-50 p-5 sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-base font-black text-[#431407] sm:text-lg">
+                🍱 Bacha Hua Khana? Indore Annadaan Seva
+              </h2>
+              <p className="mt-1 text-xs font-medium text-orange-900/80 sm:text-sm">
+                Aayojakon se nivedan hai: bhandara samapt hone ke baad agar
+                shuddh bhojan bache to aas-paas ke gareebon, hospital ke baahar
+                ya Roti Bank / Annakshetra me zaroor bhejwayein.
+              </p>
+            </div>
+            <Link
+              href="/about"
+              className="shrink-0 rounded-2xl bg-[#431407] px-4 py-2.5 text-center text-xs font-extrabold text-white hover:bg-orange-900"
+            >
+              Seva Niyam &amp; App Guide →
+            </Link>
+          </div>
+        </div>
+      </section>
 
       {/* Footer */}
       <footer className="mt-12 border-t border-orange-200 bg-white/80 py-6 text-center text-xs text-orange-900/75">

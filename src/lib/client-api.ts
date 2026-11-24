@@ -1,4 +1,9 @@
-import { createSeedBhandaras } from './seed-data';
+import {
+  createSeedBhandaras,
+  PRESET_BHANDARA_PHOTOS,
+  refreshSeedTimestamps,
+} from './seed-data';
+import { decodeSharedBhandara } from './geo';
 import { Bhandara, CrowdLevel, UserProfile, VoteType } from './types';
 
 const USER_KEY = 'nukti_poodi_user_v1';
@@ -155,9 +160,21 @@ export async function fetchAllBhandaras(includeHidden = false): Promise<Bhandara
   }
 
   const gistData = await fetchPublicGistBhandaras();
-  const base = gistData && gistData.length > 0 ? gistData : createSeedBhandaras();
+  const base = refreshSeedTimestamps(
+    gistData && gistData.length > 0 ? gistData : createSeedBhandaras()
+  );
   const merged = mergeWithLocalState(base);
   return includeHidden ? merged : merged.filter((b) => !b.isHidden);
+}
+
+export function importSharedBhandaraFromParam(encoded: string): Bhandara | null {
+  const decoded = decodeSharedBhandara(encoded, PRESET_BHANDARA_PHOTOS[0].url);
+  if (!decoded) return null;
+  const existing = readLocalCustom();
+  if (!existing.some((b) => b.id === decoded.id)) {
+    writeLocalCustom([decoded, ...existing]);
+  }
+  return decoded;
 }
 
 export async function fetchBhandaraById(id: string): Promise<Bhandara | null> {
@@ -185,6 +202,19 @@ export async function createBhandaraClient(
     'id' | 'isVerified' | 'isHidden' | 'createdAt' | 'votes' | 'crowdVotes'
   >
 ): Promise<Bhandara> {
+  const custom = readLocalCustom();
+  const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+  const recentByUser = custom.filter(
+    (b) =>
+      b.createdBy === payload.createdBy &&
+      new Date(b.createdAt).getTime() >= dayAgo
+  ).length;
+  if (recentByUser >= 5) {
+    throw new Error(
+      'Ek din me adhiktam 5 bhandare hi jode ja sakte hain (Spam Protection).'
+    );
+  }
+
   if (!isStaticHosting()) {
     try {
       const res = await fetch(`${BASE_PATH}/api/bhandaras`, {
@@ -195,8 +225,14 @@ export async function createBhandaraClient(
       if (res.ok) {
         const data = await res.json();
         if (data.bhandara) return data.bhandara as Bhandara;
+      } else if (res.status === 429) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Daily limit reached');
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('adhiktam 5')) {
+        throw err;
+      }
       // fallback to local persistence
     }
   }
@@ -211,7 +247,6 @@ export async function createBhandaraClient(
     votes: { chal_raha: 1, khatam: 0, fake: 0 },
     crowdVotes: { normal: 1, medium: 0, heavy: 0 },
   };
-  const custom = readLocalCustom();
   writeLocalCustom([newRecord, ...custom]);
   return newRecord;
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   MapPin,
@@ -36,11 +37,15 @@ export function BhandaraCard({
   const crowd = getDominantCrowd(bhandara);
   const detailPath = getBhandaraDetailPath(bhandara);
   const mapsUrl = getGoogleMapsUrl(bhandara.lat, bhandara.lng);
+  const [origin, setOrigin] = useState('');
 
-  const shareUrl =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH || ''}${detailPath}`
-      : detailPath;
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  const shareUrl = origin
+    ? `${origin}${process.env.NEXT_PUBLIC_BASE_PATH || ''}${detailPath}`
+    : detailPath;
   const whatsappUrl = buildWhatsAppShareUrl(bhandara, shareUrl);
 
   return (

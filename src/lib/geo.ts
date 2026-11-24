@@ -125,11 +125,85 @@ export function getDominantCrowd(bhandara: Bhandara): {
   return { level: 'normal', label: 'Aaram Se Prasad Milega', emoji: '🟢' };
 }
 
-export function getBhandaraDetailPath(bhandara: Pick<Bhandara, 'id' | 'isSeed'>): string {
+export function encodeSharedBhandara(b: Bhandara): string {
+  try {
+    const compact = {
+      id: b.id,
+      t: b.title,
+      o: b.organizerName,
+      f: b.foodItems,
+      d: b.description,
+      a: b.area,
+      ad: b.address,
+      l: b.landmark,
+      lt: b.lat,
+      lg: b.lng,
+      st: b.startTime,
+      et: b.endTime,
+      cb: b.createdBy,
+      cn: b.createdByName,
+      ca: b.createdAt,
+    };
+    const json = JSON.stringify(compact);
+    const bytes = new TextEncoder().encode(json);
+    let bin = '';
+    bytes.forEach((byte) => {
+      bin += String.fromCharCode(byte);
+    });
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  } catch {
+    return '';
+  }
+}
+
+export function decodeSharedBhandara(
+  encoded: string,
+  fallbackPhotoUrl: string
+): Bhandara | null {
+  try {
+    const b64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
+    const bin = atob(b64 + pad);
+    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+    const json = new TextDecoder().decode(bytes);
+    const c = JSON.parse(json);
+    if (!c?.id || !c?.t) return null;
+    return {
+      id: c.id,
+      title: c.t,
+      organizerName: c.o,
+      foodItems: Array.isArray(c.f) ? c.f : ['Prasad'],
+      description: c.d,
+      area: c.a || 'Indore',
+      address: c.ad || `${c.a || 'Indore'}`,
+      landmark: c.l || '',
+      lat: typeof c.lt === 'number' ? c.lt : 22.7196,
+      lng: typeof c.lg === 'number' ? c.lg : 75.8577,
+      startTime: c.st || new Date().toISOString(),
+      endTime: c.et || new Date(Date.now() + 3 * 3600000).toISOString(),
+      photoUrl: fallbackPhotoUrl,
+      isVerified: false,
+      isHidden: false,
+      isSeed: false,
+      createdBy: c.cb || 'guest',
+      createdByName: c.cn || 'Indore Bhakt',
+      createdAt: c.ca || new Date().toISOString(),
+      votes: { chal_raha: 1, khatam: 0, fake: 0 },
+      crowdVotes: { normal: 1, medium: 0, heavy: 0 },
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function getBhandaraDetailPath(bhandara: Bhandara): string {
   if (bhandara.isSeed) {
     return `/bhandara/${bhandara.id}`;
   }
-  return `/bhandara/custom?id=${encodeURIComponent(bhandara.id)}`;
+  const encoded = typeof window !== 'undefined' ? encodeSharedBhandara(bhandara) : '';
+  return encoded
+    ? `/bhandara/custom?id=${encodeURIComponent(bhandara.id)}&d=${encoded}`
+    : `/bhandara/custom?id=${encodeURIComponent(bhandara.id)}`;
 }
 
 export function buildWhatsAppShareUrl(bhandara: Bhandara, pageUrl: string): string {

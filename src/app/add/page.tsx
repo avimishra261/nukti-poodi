@@ -17,6 +17,7 @@ import {
 import { Navbar } from '@/components/Navbar';
 import { LoginModal } from '@/components/LoginModal';
 import { createBhandaraClient, getSavedUser } from '@/lib/client-api';
+import { getBhandaraDetailPath } from '@/lib/geo';
 import { FOOD_CHIP_OPTIONS, INDORE_AREAS } from '@/lib/indore-areas';
 import { PRESET_BHANDARA_PHOTOS } from '@/lib/seed-data';
 import { UserProfile } from '@/lib/types';
@@ -203,9 +204,15 @@ export default function AddBhandaraPage() {
         createdByName: currentUser.name,
       });
 
-      router.push(`/bhandara/custom?id=${encodeURIComponent(created.id)}&created=1`);
-    } catch {
-      setError('Save karne me samasya aayi, kripya dobara koshish karein.');
+      const path = getBhandaraDetailPath(created);
+      const joiner = path.includes('?') ? '&' : '?';
+      router.push(`${path}${joiner}created=1`);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Save karne me samasya aayi, kripya dobara koshish karein.'
+      );
       setSubmitting(false);
     }
   };

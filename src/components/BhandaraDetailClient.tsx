@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   BadgeCheck,
@@ -13,26 +13,32 @@ import {
   MapPin,
   Navigation,
   Share2,
+  StopCircle,
+  Trash2,
   Users,
   XCircle,
 } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { LoginModal } from '@/components/LoginModal';
 import {
+  adminDeleteBhandaraClient,
+  adminUpdateBhandaraClient,
   fetchBhandaraById,
   getSavedUser,
   getUserVoteForBhandara,
+  importSharedBhandaraFromParam,
   submitVoteClient,
 } from '@/lib/client-api';
 import {
   buildWhatsAppShareUrl,
   formatDayTimeIST,
   formatTimeIST,
+  getBhandaraDetailPath,
   getDominantCrowd,
   getGoogleMapsUrl,
   getStatusLabel,
 } from '@/lib/geo';
-import { Bhandara, CrowdLevel, VoteType } from '@/lib/types';
+import { Bhandara, CrowdLevel, UserProfile, VoteType } from '@/lib/types';
 
 const LocationPickerMap = dynamic(
   () => import('@/components/LocationPickerMap').then((m) => m.LocationPickerMap),
@@ -40,24 +46,39 @@ const LocationPickerMap = dynamic(
 );
 
 export function BhandaraDetailClient({ routeId }: { routeId: string }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const resolvedId =
     routeId === 'custom' ? searchParams.get('id') || 'custom' : routeId;
+  const sharedPayload = searchParams.get('d');
 
   const [bhandara, setBhandara] = useState<Bhandara | null>(null);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [userVote, setUserVote] = useState<VoteType | null>(null);
   const [crowdVoted, setCrowdVoted] = useState<CrowdLevel | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
   const [toast, setToast] = useState<string>('');
+  const [origin, setOrigin] = useState('');
 
   const isCreatedNow = searchParams.get('created') === '1';
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+    setUser(getSavedUser());
+    const syncUser = () => setUser(getSavedUser());
+    window.addEventListener('nukti-user-changed', syncUser);
+    return () => window.removeEventListener('nukti-user-changed', syncUser);
+  }, []);
 
   useEffect(() => {
     let active = true;
     async function load() {
       setLoading(true);
-      const data = await fetchBhandaraById(resolvedId);
+      let data = await fetchBhandaraById(resolvedId);
+      if (!data && sharedPayload) {
+        data = importSharedBhandaraFromParam(sharedPayload);
+      }
       if (active) {
         setBhandara(data);
         setUserVote(getUserVoteForBhandara(resolvedId));
@@ -68,7 +89,7 @@ export function BhandaraDetailClient({ routeId }: { routeId: string }) {
     return () => {
       active = false;
     };
-  }, [resolvedId]);
+  }, [resolvedId, sharedPayload]);
 
   const handleVote = async (voteType: VoteType) => {
     if (!bhandara) return;
@@ -139,9 +160,29 @@ export function BhandaraDetailClient({ routeId }: { routeId: string }) {
   const statusInfo = getStatusLabel(bhandara);
   const crowd = getDominantCrowd(bhandara);
   const mapsUrl = getGoogleMapsUrl(bhandara.lat, bhandara.lng);
-  const currentUrl =
-    typeof window !== 'undefined' ? window.location.href : '';
+  const detailPath = getBhandaraDetailPath(bhandara);
+  const currentUrl = origin
+    ? `${origin}${process.env.NEXT_PUBLIC_BASE_PATH || ''}${detailPath}`
+    : detailPath;
   const whatsappUrl = buildWhatsAppShareUrl(bhandara, currentUrl);
+  const isOwner = !!user && user.id === bhandara.createdBy;
+
+  const handleMarkEnded = async () => {
+    const updated = await adminUpdateBhandaraClient(bhandara.id, {
+      endTime: new Date().toISOString(),
+    });
+    if (updated) {
+      setBhandara(updated);
+      setToast('Bhandara khatam mark kar diya gaya hai 🙏');
+    }
+  };
+
+  const handleOwnerDelete = async () => {
+    const ok = await adminDeleteBhandaraClient(bhandara.id);
+    if (ok) {
+      router.push('/');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#FFFBEB] pb-16">
@@ -393,6 +434,34 @@ export function BhandaraDetailClient({ routeId }: { routeId: string }) {
                 </div>
               </div>
             </div>
+
+            {isOwner && (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-orange-300 bg-orange-50 p-3.5">
+                <span className="text-xs font-extrabold text-[#431407]">
+                  👤 Aapne ye post kiya hai (Owner Controls)
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {statusInfo.status !== 'ended' && (
+                    <button
+                      type="button"
+                      onClick={handleMarkEnded}
+                      className="inline-flex items-center gap-1 rounded-xl border border-amber-400 bg-white px-3 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-50"
+                    >
+                      <StopCircle className="h-3.5 w-3.5" />
+                      Bhandara Khatam Mark Karein
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleOwnerDelete}
+                    className="inline-flex items-center gap-1 rounded-xl bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Post Delete Karein
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="mt-4 flex items-center justify-between text-xs font-medium text-orange-900/60">
               <span>Post kiya: {bhandara.createdByName}</span>

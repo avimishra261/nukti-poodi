@@ -37,6 +37,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const createdBy = String(body.createdBy || 'guest');
+    if (createdBy !== 'guest' && createdBy !== 'seed-admin') {
+      const db = await readDatabase();
+      const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+      const recentCount = db.bhandaras.filter(
+        (b) =>
+          b.createdBy === createdBy &&
+          new Date(b.createdAt).getTime() >= dayAgo
+      ).length;
+      if (recentCount >= 5) {
+        return NextResponse.json(
+          {
+            error:
+              'Ek din me adhiktam 5 bhandare hi jode ja sakte hain (Spam Protection).',
+          },
+          { status: 429 }
+        );
+      }
+    }
+
     const startTime = body.startTime
       ? new Date(body.startTime)
       : new Date();
