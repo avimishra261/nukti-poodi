@@ -7,19 +7,18 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   BadgeCheck,
-  CheckCircle2,
+  Check,
   Clock,
-  Flag,
+  Copy,
   MapPin,
   Navigation,
   Share2,
   StopCircle,
   Trash2,
-  Users,
-  XCircle,
 } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { LoginModal } from '@/components/LoginModal';
+import { CommunityTrustWidget } from '@/components/CommunityTrustWidget';
 import {
   adminDeleteBhandaraClient,
   adminUpdateBhandaraClient,
@@ -34,7 +33,6 @@ import {
   formatDayTimeIST,
   formatTimeIST,
   getBhandaraDetailPath,
-  getDominantCrowd,
   getGoogleMapsUrl,
   getStatusLabel,
 } from '@/lib/geo';
@@ -59,6 +57,7 @@ export function BhandaraDetailClient({ routeId }: { routeId: string }) {
   const [crowdVoted, setCrowdVoted] = useState<CrowdLevel | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
   const [toast, setToast] = useState<string>('');
+  const [copied, setCopied] = useState(false);
   const [origin, setOrigin] = useState('');
 
   const isCreatedNow = searchParams.get('created') === '1';
@@ -93,8 +92,8 @@ export function BhandaraDetailClient({ routeId }: { routeId: string }) {
 
   const handleVote = async (voteType: VoteType) => {
     if (!bhandara) return;
-    const user = getSavedUser();
-    if (!user) {
+    const currentUser = getSavedUser();
+    if (!currentUser) {
       setLoginOpen(true);
       return;
     }
@@ -158,7 +157,6 @@ export function BhandaraDetailClient({ routeId }: { routeId: string }) {
   }
 
   const statusInfo = getStatusLabel(bhandara);
-  const crowd = getDominantCrowd(bhandara);
   const mapsUrl = getGoogleMapsUrl(bhandara.lat, bhandara.lng);
   const detailPath = getBhandaraDetailPath(bhandara);
   const currentUrl = origin
@@ -166,6 +164,16 @@ export function BhandaraDetailClient({ routeId }: { routeId: string }) {
     : detailPath;
   const whatsappUrl = buildWhatsAppShareUrl(bhandara, currentUrl);
   const isOwner = !!user && user.id === bhandara.createdBy;
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(currentUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // ignore clipboard errors
+    }
+  };
 
   const handleMarkEnded = async () => {
     const updated = await adminUpdateBhandaraClient(bhandara.id, {
@@ -191,7 +199,7 @@ export function BhandaraDetailClient({ routeId }: { routeId: string }) {
       <main className="mx-auto max-w-3xl px-3 py-5 sm:px-6">
         <Link
           href="/"
-          className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-xs font-extrabold text-[#431407] shadow-sm border border-orange-200 hover:bg-orange-50"
+          className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-orange-200 bg-white px-3.5 py-1.5 text-xs font-extrabold text-[#431407] shadow-sm hover:bg-orange-50"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Saare Bhandare Dekho
@@ -303,26 +311,44 @@ export function BhandaraDetailClient({ routeId }: { routeId: string }) {
             </div>
 
             {/* Primary Actions */}
-            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <a
                 href={mapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-600 to-red-600 px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-orange-600/25 transition hover:brightness-110"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-600 to-red-600 px-4 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-orange-600/25 transition hover:brightness-110"
               >
-                <Navigation className="h-5 w-5" />
-                🧭 Google Maps Pe Raasta Dikhao
+                <Navigation className="h-4 w-4" />
+                Google Maps Raasta
               </a>
 
               <a
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-emerald-600/25 transition hover:bg-emerald-700"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-emerald-600/25 transition hover:bg-emerald-700"
               >
-                <Share2 className="h-5 w-5" />
-                📲 WhatsApp Pe Share Karo
+                <Share2 className="h-4 w-4" />
+                WhatsApp Share
               </a>
+
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="flex items-center justify-center gap-2 rounded-2xl border-2 border-orange-200 bg-orange-50 px-4 py-3.5 text-sm font-extrabold text-[#431407] transition hover:bg-orange-100"
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-4 w-4 text-emerald-600" />
+                    Link Copy Ho Gaya!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4 text-orange-600" />
+                    Link Copy Karein
+                  </>
+                )}
+              </button>
             </div>
 
             {/* Address & Mini Map */}
@@ -345,95 +371,14 @@ export function BhandaraDetailClient({ routeId }: { routeId: string }) {
               />
             </div>
 
-            {/* Community Trust Engine */}
-            <div className="mt-6 rounded-3xl border-2 border-orange-200 bg-[#FFFBEB] p-5">
-              <h2 className="text-base font-black text-[#431407]">
-                🔍 Kya Abhi Bhandara Chal Raha Hai? (Live Status Batayein)
-              </h2>
-              <p className="mt-0.5 text-xs font-medium text-orange-900/75">
-                Aapke 1 click se baaki Indore ke bhakton ka samay bachega!
-              </p>
-
-              {toast && (
-                <div className="mt-3 rounded-xl bg-emerald-100 px-3.5 py-2 text-xs font-bold text-emerald-900">
-                  {toast}
-                </div>
-              )}
-
-              <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-                <button
-                  type="button"
-                  onClick={() => handleVote('chal_raha')}
-                  className={`flex items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-extrabold transition ${
-                    userVote === 'chal_raha'
-                      ? 'border-emerald-600 bg-emerald-600 text-white'
-                      : 'border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-50'
-                  }`}
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  Haan Chal Raha ({bhandara.votes.chal_raha})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleVote('khatam')}
-                  className={`flex items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-extrabold transition ${
-                    userVote === 'khatam'
-                      ? 'border-amber-600 bg-amber-600 text-white'
-                      : 'border-amber-300 bg-white text-amber-900 hover:bg-amber-50'
-                  }`}
-                >
-                  <XCircle className="h-4 w-4" />
-                  Khatam Ho Gaya ({bhandara.votes.khatam})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleVote('fake')}
-                  className={`flex items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-extrabold transition ${
-                    userVote === 'fake'
-                      ? 'border-red-600 bg-red-600 text-white'
-                      : 'border-red-200 bg-white text-red-700 hover:bg-red-50'
-                  }`}
-                >
-                  <Flag className="h-4 w-4" />
-                  Fake Hai ({bhandara.votes.fake})
-                </button>
-              </div>
-
-              {/* Crowd Meter */}
-              <div className="mt-5 border-t border-orange-200 pt-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="flex items-center gap-1.5 text-xs font-extrabold text-[#431407]">
-                    <Users className="h-4 w-4 text-orange-600" />
-                    Bheed ka Haal: {crowd.emoji} {crowd.label}
-                  </span>
-                  <div className="flex gap-1.5">
-                    {(
-                      [
-                        { k: 'normal', label: '🟢 Kam' },
-                        { k: 'medium', label: '👥 Medium' },
-                        { k: 'heavy', label: '🔥 Bahut' },
-                      ] as { k: CrowdLevel; label: string }[]
-                    ).map((item) => (
-                      <button
-                        key={item.k}
-                        type="button"
-                        disabled={!!crowdVoted}
-                        onClick={() => handleCrowdVote(item.k)}
-                        className={`rounded-full px-3 py-1 text-xs font-bold transition ${
-                          crowdVoted === item.k
-                            ? 'bg-[#431407] text-white'
-                            : 'border border-orange-200 bg-white text-[#431407] hover:bg-orange-100'
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <CommunityTrustWidget
+              bhandara={bhandara}
+              userVote={userVote}
+              crowdVoted={crowdVoted}
+              toast={toast}
+              onVote={handleVote}
+              onCrowdVote={handleCrowdVote}
+            />
 
             {isOwner && (
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-orange-300 bg-orange-50 p-3.5">

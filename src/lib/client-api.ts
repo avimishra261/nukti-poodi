@@ -3,13 +3,20 @@ import {
   PRESET_BHANDARA_PHOTOS,
   refreshSeedTimestamps,
 } from './seed-data';
-import { decodeSharedBhandara } from './geo';
-import { Bhandara, CrowdLevel, UserProfile, VoteType } from './types';
+import { decodeSharedBhandara } from './utils/share';
+import {
+  getSavedUser,
+  saveUser,
+  logoutUser,
+  getUserVoteForBhandara,
+  setUserVoteForBhandara,
+} from './services/auth-storage';
+import { Bhandara, CrowdLevel, VoteType } from './types';
 
-const USER_KEY = 'nukti_poodi_user_v1';
+export { getSavedUser, saveUser, logoutUser, getUserVoteForBhandara };
+
 const CUSTOM_KEY = 'nukti_poodi_custom_bhandaras_v1';
 const OVERRIDES_KEY = 'nukti_poodi_overrides_v1';
-const VOTED_KEY = 'nukti_poodi_user_votes_v1';
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '';
 const PUBLIC_GIST_ID = process.env.NEXT_PUBLIC_GIST_ID || '';
@@ -18,51 +25,6 @@ function isStaticHosting(): boolean {
   if (typeof window === 'undefined') return false;
   if (BASE_PATH) return true;
   return window.location.hostname.endsWith('github.io');
-}
-
-export function getSavedUser(): UserProfile | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(USER_KEY);
-    return raw ? (JSON.parse(raw) as UserProfile) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function saveUser(user: UserProfile): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
-  window.dispatchEvent(new Event('nukti-user-changed'));
-}
-
-export function logoutUser(): void {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(USER_KEY);
-  window.dispatchEvent(new Event('nukti-user-changed'));
-}
-
-export function getUserVoteForBhandara(bhandaraId: string): VoteType | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(VOTED_KEY);
-    const map = raw ? (JSON.parse(raw) as Record<string, VoteType>) : {};
-    return map[bhandaraId] || null;
-  } catch {
-    return null;
-  }
-}
-
-function setUserVoteForBhandara(bhandaraId: string, voteType: VoteType): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const raw = localStorage.getItem(VOTED_KEY);
-    const map = raw ? (JSON.parse(raw) as Record<string, VoteType>) : {};
-    map[bhandaraId] = voteType;
-    localStorage.setItem(VOTED_KEY, JSON.stringify(map));
-  } catch {
-    // ignore storage errors
-  }
 }
 
 function readLocalCustom(): Bhandara[] {

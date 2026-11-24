@@ -18,6 +18,7 @@ import { Navbar } from '@/components/Navbar';
 import { LoginModal } from '@/components/LoginModal';
 import { createBhandaraClient, getSavedUser } from '@/lib/client-api';
 import { getBhandaraDetailPath } from '@/lib/geo';
+import { compressImageToDataUrl } from '@/lib/utils/image';
 import { FOOD_CHIP_OPTIONS, INDORE_AREAS } from '@/lib/indore-areas';
 import { PRESET_BHANDARA_PHOTOS } from '@/lib/seed-data';
 import { UserProfile } from '@/lib/types';
@@ -32,33 +33,6 @@ function toLocalDateTimeInput(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
     d.getHours()
   )}:${pad(d.getMinutes())}`;
-}
-
-async function compressImageToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const maxDim = 640;
-        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(String(reader.result));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.72));
-      };
-      img.onerror = reject;
-      img.src = String(reader.result);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
 
 export default function AddBhandaraPage() {

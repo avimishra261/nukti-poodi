@@ -15,6 +15,7 @@ import { Bhandara } from '@/lib/types';
 import {
   buildWhatsAppShareUrl,
   getBhandaraDetailPath,
+  getConfirmationRate,
   getDominantCrowd,
   getGoogleMapsUrl,
   getStatusLabel,
@@ -35,6 +36,7 @@ export function BhandaraCard({
 }: BhandaraCardProps) {
   const statusInfo = getStatusLabel(bhandara);
   const crowd = getDominantCrowd(bhandara);
+  const confirmRate = getConfirmationRate(bhandara);
   const detailPath = getBhandaraDetailPath(bhandara);
   const mapsUrl = getGoogleMapsUrl(bhandara.lat, bhandara.lng);
   const [origin, setOrigin] = useState('');
@@ -49,8 +51,11 @@ export function BhandaraCard({
   const whatsappUrl = buildWhatsAppShareUrl(bhandara, shareUrl);
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-3xl border border-orange-200/90 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-xl hover:shadow-orange-900/10">
-      <Link href={detailPath} className="relative block aspect-[16/9] w-full overflow-hidden bg-orange-100">
+    <article className="group flex flex-col overflow-hidden rounded-3xl border border-orange-200/90 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:border-orange-300 hover:shadow-xl hover:shadow-orange-900/10">
+      <Link
+        href={detailPath}
+        className="relative block aspect-[16/9] w-full overflow-hidden bg-orange-100"
+      >
         <img
           src={bhandara.photoUrl}
           alt={bhandara.title}
@@ -105,6 +110,12 @@ export function BhandaraCard({
       </Link>
 
       <div className="flex flex-1 flex-col p-4">
+        {bhandara.organizerName && (
+          <p className="mb-0.5 line-clamp-1 text-[11px] font-bold uppercase tracking-wide text-orange-700">
+            🛕 {bhandara.organizerName}
+          </p>
+        )}
+
         <Link href={detailPath} className="block">
           <h3 className="line-clamp-2 text-lg font-extrabold leading-snug text-[#431407] group-hover:text-orange-700">
             {bhandara.title}
@@ -127,53 +138,63 @@ export function BhandaraCard({
           ))}
         </div>
 
-        {/* Trust & Crowd Stats */}
-        <div className="mt-3 flex items-center justify-between border-t border-orange-100 pt-3 text-xs font-semibold text-orange-900/80">
-          <span className="flex items-center gap-1 text-emerald-700 font-bold">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            {bhandara.votes.chal_raha} ne confirm kiya
-          </span>
-          <span className="flex items-center gap-1">
-            <Users className="h-3.5 w-3.5 text-orange-600" />
-            {crowd.emoji} {crowd.label.split(' ')[0]}
-          </span>
-        </div>
+        {/* Trust Progress Bar & Crowd Stats */}
+        <div className="mt-auto pt-3">
+          <div className="border-t border-orange-100 pt-3">
+            <div className="flex items-center justify-between text-xs font-semibold text-orange-900/80">
+              <span className="flex items-center gap-1 font-bold text-emerald-700">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                {bhandara.votes.chal_raha} confirmed ({confirmRate}%)
+              </span>
+              <span className="flex items-center gap-1">
+                <Users className="h-3.5 w-3.5 text-orange-600" />
+                {crowd.emoji} {crowd.label.split(' ')[0]}
+              </span>
+            </div>
+            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-orange-100">
+              <div
+                className="h-full rounded-full bg-emerald-500"
+                style={{ width: `${confirmRate}%` }}
+              />
+            </div>
+          </div>
 
-        {/* Quick Actions */}
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          <a
-            href={mapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-1 rounded-xl bg-orange-600 px-2 py-2 text-xs font-extrabold text-white transition hover:bg-orange-700"
-          >
-            <Navigation className="h-3.5 w-3.5" />
-            Raasta
-          </a>
+          {/* Quick Actions */}
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1 rounded-xl bg-orange-600 px-2 py-2 text-xs font-extrabold text-white transition hover:bg-orange-700"
+            >
+              <Navigation className="h-3.5 w-3.5" />
+              Raasta
+            </a>
 
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-1 rounded-xl bg-emerald-600 px-2 py-2 text-xs font-extrabold text-white transition hover:bg-emerald-700"
-          >
-            <Share2 className="h-3.5 w-3.5" />
-            Share
-          </a>
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1 rounded-xl bg-emerald-600 px-2 py-2 text-xs font-extrabold text-white transition hover:bg-emerald-700"
+            >
+              <Share2 className="h-3.5 w-3.5" />
+              Share
+            </a>
 
-          <button
-            type="button"
-            disabled={userVoted}
-            onClick={() => onQuickConfirm?.(bhandara.id)}
-            className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs font-extrabold transition ${
-              userVoted
-                ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                : 'border-orange-200 bg-orange-50 text-[#431407] hover:bg-orange-100'
-            }`}
-          >
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            {userVoted ? 'Confirmed' : 'Chal Raha'}
-          </button>
+            <button
+              type="button"
+              disabled={userVoted}
+              onClick={() => onQuickConfirm?.(bhandara.id)}
+              className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs font-extrabold transition ${
+                userVoted
+                  ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                  : 'border-orange-200 bg-orange-50 text-[#431407] hover:bg-orange-100'
+              }`}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {userVoted ? 'Confirmed' : 'Chal Raha'}
+            </button>
+          </div>
         </div>
       </div>
     </article>
