@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import 'leaflet/dist/leaflet.css';
+
+:root {
+  --bg-cream: #fffbeb;
+  --kesariya: #ea580c;
+  --mandir-maroon: #7c2d12;
+}
+
+body {
+  background-color: #fffbeb;
+  color: #27150a;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.leaflet-container {
+  font-family: inherit;
+  z-index: 10;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+}
+
+.live-pulse-ring {
+  animation: pulse-ring 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+/* Hide scrollbars on horizontal chip bars */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
